@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Air Native Extension Build Scripts" default="all">
+
+	<!-- Config -->
+	<property file="build.config"/>
+
+	<!-- All -->
+	<target name="all" depends="android,swc-mobile,swc-default,package" description="Full build of extension"/>
+
+	<!-- Android -->
+	<target name="android" description="Build Android Library">
+		<delete dir="../android/temp"/>
+		<mkdir dir="../android/temp/classes"/>
+
+		<javac source="1.6" srcdir="../${name}Android/src" destdir="../android/temp/classes" includeantruntime="false">
+			<classpath>
+				<pathelement location="${android.sdk}/android.jar"/>
+				<pathelement location="${FLEX_HOME}/lib/android/FlashRuntimeExtensions.jar"/>
+				<pathelement location="../libs/gson-2.2.2.jar"/>
+				<pathelement location="../libs/${externalJarName}"/>
+			</classpath>
+		</javac>
+
+		<mkdir dir="../android/temp/zip"/>
+		<unzip src="../libs/${externalJarName}" dest="../android/temp/zip"/>
+		<unzip src="../libs/gson-2.2.2.jar" dest="../android/temp/zip"/>
+		<copydir src="../android/temp/zip/com" dest="../android/temp/classes/com"/>
+		<copydir src="../android/temp/zip/assets" dest="../android/temp/android/assets"/>
+		<copydir src="../android/temp/zip/resource" dest="../android/temp/android/resource"/>
+
+		<mkdir dir="../temp/android/"/>
+		<copy todir="../temp/android/res/">
+			<fileset dir="../${name}Android/res"/>
+		</copy>
+		<copy todir="../temp/android/libs/">
+			<fileset dir="../${name}Android/libs"/>
+		</copy>
+
+		<jar basedir="../android/temp/classes" destfile="../temp/android/lib${name}.jar"/>
+		<delete dir="../android/temp"/>
+	</target>
+
+	<!-- Actionscript mobile -->
+	<target name="swc-mobile" description="Build SWC library">
+		<mkdir dir="../temp/swc/content/"/>
+
+		<fileset dir="../${name}Lib/src" casesensitive="yes" id="classfiles">
+			<include name="**/*.as"/>
+		</fileset>
+
+		<pathconvert property="classlist" refid="classfiles" pathsep=" " dirsep=".">
+			<regexpmapper from=".*src.(.*)\.as" to="\1"/>
+		</pathconvert>
+
+		<exec executable="${FLEX_HOME}/bin/compc${bin.ext}" failonerror="true">
+			<arg line='-source-path ../${name}Lib/src'/>
+			<arg line='-output ../temp/swc/${name}.swc'/>
+			<arg line='-swf-version=14'/>
+			<arg line='-external-library-path+="${FLEX_HOME}/frameworks/libs/air/airglobal.swc"'/>
+			<arg line='-include-classes ${classlist}'/>
+		</exec>
+
+		<unzip src="../temp/swc/${name}.swc" dest="../temp/swc/content" overwrite="true"/>
+		<copy file="../temp/swc/content/library.swf" todir="../temp/android" overwrite="true"/>
+		<delete dir="../temp/swc/content/"/>
+	</target>
+
+	<!-- Actionscript default (for AIR simulator) -->
+	<target name="swc-default" description="Build SWC library">
+		<mkdir dir="../temp/swc/content/"/>
+
+		<fileset dir="../${name}Lib/src" casesensitive="yes" id="classfiles">
+			<include name="**/*.as"/>
+		</fileset>
+
+		<pathconvert property="classlist" refid="classfiles" pathsep=" " dirsep=".">
+			<regexpmapper from=".*src.(.*)\.as" to="\1"/>
+		</pathconvert>
+
+		<exec executable="${FLEX_HOME}/bin/compc${bin.ext}" failonerror="true">
+			<arg line='-source-path ../${name}Lib/src'/>
+			<arg line='-output ../temp/swc/${name}.swc'/>
+			<arg line='-swf-version=14'/>
+			<arg line='-external-library-path+="${FLEX_HOME}/frameworks/libs/air/airglobal.swc"'/>
+			<arg line='-include-classes ${classlist}'/>
+		</exec>
+
+		<unzip src="../temp/swc/${name}.swc" dest="../temp/swc/content" overwrite="true"/>
+		<copy file="../temp/swc/content/library.swf" todir="../temp/default" overwrite="true"/>
+		<delete dir="../temp/swc/content/"/>
+	</target>
+
+	<!-- Package -->
+	<target name="package" description="Create the extension package">
+		<exec executable="${FLEX_HOME}/bin/adt${bin.ext}" failonerror="true" dir="../temp">
+			<arg value="-package"/>
+			<arg value="-target"/>
+			<arg value="ane"/>
+			<arg value="${name}.ane"/>
+			<arg value="../build/extension.xml"/>
+			<arg line="-swc swc/${name}.swc"/>
+			<arg line="-platform Android-ARM -C android/ ."/>
+			<arg line="-platform default -C default/ ."/>
+		</exec>
+
+		<move file="../temp/${name}.ane" todir="../bin"/>
+		<delete dir="../temp"/>
+		<delete dir="../android"/>
+	</target>
+
+</project>

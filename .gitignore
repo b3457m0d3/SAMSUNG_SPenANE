@@ -1,0 +1,5 @@
+bin
+*Test.java
+.idea
+.project
+.settings
